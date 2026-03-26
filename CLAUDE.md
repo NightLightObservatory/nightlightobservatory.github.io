@@ -1,12 +1,52 @@
-# CLAUDE.md — AI Development Context
+# CLAUDE.md — AI Development Context & Session Reconnection
+
+
+
+> **This file is the primary context document for AI-assisted development.**
+
+> Any new Claude session (browser, API, or GitHub Action) should read this first
+
+> to understand the project state and continue from where the last session left off.
 
 
 
 ## Project: NLT Observatory (Big Data Nighttime Lights)
 
-**Live URL:** https://nightlightobservatory.github.io/
 
-**Repository:** https://github.com/NightLightObservatory/nightlightobservatory.github.io
+
+| Key | Value |
+
+|-----|-------|
+
+| **Live URL** | https://nightlightobservatory.github.io/ |
+
+| **Repository** | https://github.com/NightLightObservatory/nightlightobservatory.github.io |
+
+| **Project Board** | https://github.com/orgs/NightLightObservatory/projects/1 |
+
+| **Epic Issue** | https://github.com/NightLightObservatory/nightlightobservatory.github.io/issues/1 |
+
+| **Last Updated** | March 26, 2026 |
+
+| **Last Session** | Major UX overhaul + issue/project board creation |
+
+
+
+## Quick Reconnection Checklist
+
+When starting a new session on this project:
+
+1. Read this CLAUDE.md (you're doing it now)
+
+2. Check **open issues**: `/issues?q=is:open`
+
+3. Check **project board**: `/projects/1` for current priorities
+
+4. Check **recent commits**: `/commits/main` for latest changes
+
+5. Check **Actions**: `/actions` for build status
+
+6. Visit the live site to verify current state
 
 
 
@@ -26,61 +66,127 @@
 
 ## Key Files
 
-- `src/App.jsx` — Complete application (~700 lines of logic, ~1400 with blank lines)
+| File | Purpose |
 
-- `index.html` — CSS overrides for MapLibre controls, scrollbars, range inputs, animations
+|------|---------|
 
-- `public/data/admin0.json` — 9 countries (VNM, IDN, TLS, PNG, FJI, SLB, VUT, WSM, IND)
+| `src/App.jsx` | Complete application (~700 lines logic) |
 
-- `public/data/date-range.json` — 105 months (2012-04 to 2020-12)
+| `index.html` | CSS overrides for MapLibre, scrollbars, animations |
 
-- `public/data/analytics/{GID}.json` — Radiance time-series + cloud-free coverage
+| `public/data/admin0.json` | 9 countries (VNM, IDN, TLS, PNG, FJI, SLB, VUT, WSM, IND) |
 
-- `public/data/admin1/{GID}.json` — Sub-national regions with bbox
+| `public/data/date-range.json` | 105 months (2012-04 to 2020-12) |
+
+| `public/data/analytics/{GID}.json` | Radiance + cloud-free time-series per country |
+
+| `public/data/admin1/{GID}.json` | Sub-national regions with bbox |
+
+| `.github/workflows/deploy.yml` | Build & deploy to GitHub Pages |
 
 
 
 ## Design System (nltgis.ai-inspired)
 
-- **Theme:** Dark navy (#0a1628) with glassmorphism cards
+- **Theme:** Dark navy (#0a1628), glassmorphism cards (rgba + backdrop-blur)
 
-- **Font:** DM Sans (Google Fonts, variable weight)
+- **Font:** DM Sans (Google Fonts, variable weight 100-1000)
 
-- **Accent:** Indigo (#6366f1) with hover (#818cf8)
+- **Accent:** Indigo (#6366f1), hover (#818cf8), glow (rgba(99,102,241,0.4))
 
-- **Cards:** rgba(15,23,42,0.92) + backdrop-filter: blur(16px)
-
-- **Borders:** #1e293b
+- **Token object:** `T` in App.jsx contains all design tokens
 
 
 
-## Features
+## Current Features (Working)
 
-- **Tour Screen:** Gradient hero with animated CTA
+- Tour/welcome screen with animated CTA
 
-- **Basemap Switcher:** Dark, Light, Voyager, Satellite (Esri World Imagery)
+- 4 basemaps: Dark (CARTO), Light (CARTO), Voyager (CARTO), Satellite (Esri)
 
-- **Layers Panel:** NTL toggle switch + opacity slider
+- Layers panel with NTL toggle + opacity slider
 
-- **Floating Timeline:** Large play/pause, month buttons, year navigation, progress bar
+- Floating timeline: play/pause, month buttons, year nav, progress bar
 
-- **Analytics Panel:** Stats cards (Latest, Growth, Peak), Radiance/Cloud-Free tabs
+- Analytics panel: stats cards (Latest, Growth, Peak), Radiance/Cloud-Free tabs
 
-- **Interactive Charts:** SVG with hover crosshair and tooltips
+- Interactive SVG charts with hover crosshair
 
-- **Sidebar:** Collapsible, search, country flags, breadcrumb navigation
+- Collapsible sidebar with search, country flags, breadcrumb (3-level)
 
-- **Admin1 Drill-down:** Click country → see provinces/states → fly to region
+- Admin1 drill-down for all 9 countries
+
+- Map centering with smart padding on location selection
+
+
+
+## Issue Tracker Summary
+
+| # | Title | Status | Priority |
+
+|---|-------|--------|----------|
+
+| 1 | [EPIC] Full Platform Migration | Open | — |
+
+| 2 | Convert NTL tiles to PMTiles | Open | HIGH |
+
+| 3 | Host PMTiles (Releases/CDN) | Open | HIGH |
+
+| 4 | Extract admin2 data | Open | MEDIUM |
+
+| 5 | Data pipeline workflow | Open | HIGH |
+
+| 6 | App.jsx code cleanup | Open | LOW |
+
+| 7 | Admin2 drill-down UI | Open | MEDIUM |
+
+| 8 | Mobile responsive | Open | MEDIUM |
+
+| 9 | Performance optimization | Open | LOW |
+
+| 10 | Claude GitHub Action | Open | HIGH |
+
+
+
+## Critical Path (Next Actions)
+
+1. **#2 PMTiles conversion** — Download tiles from AWS, convert to PMTiles
+
+2. **#3 PMTiles hosting** — GitHub Releases or Cloudflare R2
+
+3. **#5 Data pipeline** — GitHub Actions workflow for extraction
+
+4. **#10 Claude Action** — Enable autonomous development iterations
 
 
 
 ## Data Sources
 
-- **NTL Tiles:** `https://api.lights.nltglobal.com/tiles/{date}/{z}/{x}/{y}.png` (still on AWS)
+- **NTL Tiles:** `https://api.lights.nltglobal.com/tiles/{date}/{z}/{x}/{y}.png` (AWS - ACTIVE)
 
-- **Static Data:** Extracted from `api.lights.nltglobal.com` and saved to `public/data/`
+- **Static Data:** Pre-extracted from API, saved in `public/data/`
 
-- **Basemaps:** CARTO (dark-matter, positron, voyager) + Esri World Imagery
+- **Basemaps:** CARTO CDN + Esri World Imagery
+
+
+
+## API Reference (AWS - still active, extract before shutdown)
+
+| Endpoint | Returns |
+
+|----------|---------|
+
+| `GET /date-range` | Array of YYYY-MM strings (105 dates) |
+
+| `GET /admin0` | `{ data: [{ gid, name, area, bbox }] }` |
+
+| `GET /admin1/{gid}` | `{ data: [{ gid, name, area, bbox }] }` |
+
+| `GET /admin2/{admin1_gid}` | `{ data: [{ gid, name, area }] }` (no bbox) |
+
+| `GET /ar/{gid}/{endDate}` | `{ data: { ar: [...], cf: [...], beyer: [...] } }` |
+
+| `GET /tiles/{date}/{z}/{x}/{y}.png` | 256px raster PNG tile |
 
 
 
@@ -92,37 +198,35 @@ npm install --no-package-lock
 
 npm run build    # Output: dist/
 
-npm run dev      # Local dev server
+npm run dev      # Local dev server at http://localhost:5173
 
 ```
 
-Deploy is automatic via `.github/workflows/deploy.yml` on every push to main.
+Auto-deploys via `.github/workflows/deploy.yml` on every push to main.
 
 
 
-## Known Considerations
+## Known Issues
 
-- NTL raster tiles still served from AWS (`api.lights.nltglobal.com`)
+- Extra blank lines in App.jsx from GitHub web editor clipboard transfer (#6)
 
-- Country flag emojis may render as 2-letter codes on some systems
+- Country flag emojis render as 2-letter codes on some systems
 
-- Extra blank lines in App.jsx from copy-paste (cosmetic, doesn't affect build)
+- NTL tiles still depend on AWS API (last remaining dependency)
 
-- Admin2 data available from API but not yet in UI
-
-- PMTiles conversion planned but not yet implemented
+- Admin2 data available but not in UI (#4, #7)
 
 
 
-## API Reference (for future data extraction)
+## Session History
 
-- `GET /date-range` → Array of YYYY-MM strings
+| Date | Session | Key Actions |
 
-- `GET /admin0` → `{ data: [{ gid, name, area, bbox }] }`
+|------|---------|-------------|
 
-- `GET /admin1/{gid}` → `{ data: [{ gid, name, area, bbox }] }`
+| Mar 26 2026 (AM) | Initial build | Created repo, extracted 19 data files from API, wrote App.jsx, deployed |
 
-- `GET /ar/{gid}/{endDate}` → `{ data: { ar: [...], cf: [...], beyer: [...] } }`
+| Mar 26 2026 (PM) | UX overhaul | Basemaps, floating timeline, layers panel, analytics stats, charts |
 
-- `GET /tiles/{date}/{z}/{x}/{y}.png` → 256px raster tile
+| Mar 26 2026 (EVE) | Project mgmt | Created 10 GitHub issues, project board, updated CLAUDE.md |
 
