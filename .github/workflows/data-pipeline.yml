@@ -1,0 +1,280 @@
+name: Data Pipeline — Sync NTL Data
+
+
+
+on:
+
+  schedule:
+
+    - cron: '0 6 * * 0'  # Weekly on Sunday at 6am UTC
+
+  workflow_dispatch:
+
+    inputs:
+
+      force_update:
+
+        description: 'Force update all data files'
+
+        type: boolean
+
+        default: false
+
+      extract_admin2:
+
+        description: 'Also extract admin2 boundary data'
+
+        type: boolean
+
+        default: false
+
+
+
+env:
+
+  API_BASE: https://api.lights.nltglobal.com
+
+
+
+jobs:
+
+  sync-data:
+
+    runs-on: ubuntu-latest
+
+    permissions:
+
+      contents: write
+
+    steps:
+
+      - name: Checkout repository
+
+        uses: actions/checkout@v4
+
+
+
+      - name: Set up Node.js
+
+        uses: actions/setup-node@v4
+
+        with:
+
+          node-version: '20'
+
+
+
+      - name: Fetch date range
+
+        run: |
+
+          echo "Fetching date range..."
+
+          curl -sf "${{ env.API_BASE }}/date_range" | jq '.' > public/data/date-range.json
+
+          echo "Date range: $(jq 'length' public/data/date-range.json) entries"
+
+
+
+      - name: Fetch admin0 (countries)
+
+        run: |
+
+          echo "Fetching admin0 data..."
+
+          curl -sf "${{ env.API_BASE }}/admin0" | jq '.' > public/data/admin0.json
+
+          echo "Countries: $(jq '.data | length' public/data/admin0.json)"
+
+
+
+      - name: Fetch admin1 regions for each country
+
+        run: |
+
+          mkdir -p public/data/admin1
+
+          COUNTRIES=$(jq -r '.data[].gid' public/data/admin0.json)
+
+          for gid in $COUNTRIES; do
+
+            echo "Fetching admin1 for $gid..."
+
+            curl -sf "${{ env.API_BASE }}/admin1?gid=$gid" | jq '.' > "public/data/admin1/$gid.json"
+
+            COUNT=$(jq '.data | length' "public/data/admin1/$gid.json" 2>/dev/null || echo "0")
+
+            echo "  $gid: $COUNT regions"
+
+            sleep 0.5
+
+          done
+
+
+
+      - name: Fetch analytics for each country
+
+        run: |
+
+          mkdir -p public/data/analytics
+
+          COUNTRIES=$(jq -r '.data[].gid' public/data/admin0.json)
+
+          for gid in $COUNTRIES; do
+
+            echo "Fetching analytics for $gid..."
+
+            curl -sf "${{ env.API_BASE }}/analytics?gid=$gid" | jq '.' > "public/data/analytics/$gid.json"
+
+            sleep 0.5
+
+          done
+
+
+
+      - name: Fetch admin2 data (optional)
+
+        if: github.event.inputs.extract_admin2 == 'true'
+
+        run: |
+
+          mkdir -p public/data/admin2
+
+          echo "Extracting admin2 boundary data..."
+
+          COUNTRIES=$(jq -r '.data[].gid' public/data/admin0.json)
+
+          for gid in $COUNTRIES; do
+
+            ADMIN1S=$(jq -r '.data[].gid' "public/data/admin1/$gid.json" 2>/dev/null)
+
+            for a1gid in $ADMIN1S; do
+
+              echo "Fetching admin2 for $a1gid..."
+
+              curl -sf "${{ env.API_BASE }}/admin2?gid=$a1gid" | jq '.' > "public/data/admin2/$a1gid.json" 2>/dev/null || true
+
+              sleep 0.3
+
+            done
+
+          done
+
+
+
+      - name: Verify data integrity
+
+        run: |
+
+          echo "=== Data Pipeline Summary ==="
+
+          echo "Date range entries: $(jq 'length' public/data/date-range.json)"
+
+          echo "Countries: $(jq '.data | length' public/data/admin0.json)"
+
+          echo "Admin1 files: $(ls public/data/admin1/*.json 2>/dev/null | wc -l)"
+
+          echo "Analytics files: $(ls public/data/analytics/*.json 2>/dev/null | wc -l)"
+
+          if [ -d "public/data/admin2" ]; then
+
+            echo "Admin2 files: $(ls public/data/admin2/*.json 2>/dev/null | wc -l)"
+
+          fi
+
+          echo ""
+
+          # Validate JSON files
+
+          ERRORS=0
+
+          for f in public/data/*.json public/data/admin1/*.json public/data/analytics/*.json; do
+
+            if ! jq empty "$f" 2>/dev/null; then
+
+              echo "ERROR: Invalid JSON: $f"
+
+              ERRORS=$((ERRORS + 1))
+
+            fi
+
+          done
+
+          if [ $ERRORS -gt 0 ]; then
+
+            echo "Found $ERRORS invalid JSON files!"
+
+            exit 1
+
+          fi
+
+          echo "All JSON files valid ✓"
+
+
+
+      - name: Check for changes
+
+        id: changes
+
+        run: |
+
+          git diff --stat
+
+          if [ -n "$(git status --porcelain public/data/)" ]; then
+
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+
+          else
+
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+
+            echo "No data changes detected"
+
+          fi
+
+
+
+      - name: Commit and push data updates
+
+        if: steps.changes.outputs.has_changes == 'true'
+
+        run: |
+
+          git config user.name "github-actions[bot]"
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add public/data/
+
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+
+          git commit -m "data: sync NTL data from API ($TIMESTAMP)"
+
+          git push
+
+
+
+      - name: Summary
+
+        if: always()
+
+        run: |
+
+          echo "## Data Pipeline Results" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+
+          echo "| Date range | $(jq 'length' public/data/date-range.json) months |" >> $GITHUB_STEP_SUMMARY
+
+          echo "| Countries | $(jq '.data | length' public/data/admin0.json) |" >> $GITHUB_STEP_SUMMARY
+
+          echo "| Admin1 files | $(ls public/data/admin1/*.json 2>/dev/null | wc -l) |" >> $GITHUB_STEP_SUMMARY
+
+          echo "| Analytics files | $(ls public/data/analytics/*.json 2>/dev/null | wc -l) |" >> $GITHUB_STEP_SUMMARY
+
+          echo "| Changes detected | ${{ steps.changes.outputs.has_changes }} |" >> $GITHUB_STEP_SUMMARY
+
